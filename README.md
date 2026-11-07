@@ -97,3 +97,6 @@ Se evitan servicios externos durante la transacción, las operaciones monetarias
 4. Para producción ejecutar `vercel --prod`.
 
 Alternativamente, importar el repositorio desde el dashboard de Vercel como proyecto existente. El archivo `vercel.json` enruta la aplicación ASGI de `api/index.py`.
+
+
+
