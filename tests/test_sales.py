@@ -1,4 +1,3 @@
-import api.index as sales_module
 from api.index import app
 from fastapi.testclient import TestClient
 from time import perf_counter
@@ -48,15 +47,15 @@ def test_500_line_receipt_meets_research_target():
     assert elapsed < 20
 
 
-def test_slow_sale_uses_expected_simulation(monkeypatch):
-    delays = []
-    monkeypatch.setattr(sales_module, "sleep", lambda seconds: delays.append(seconds))
+def test_slow_sale_gives_same_result_as_fast_engine():
+    payload = sale_payload(3)
+    slow = client.post("/api/sales/slow", json=payload)
+    fast = client.post("/api/sales", json=payload)
 
-    response = client.post("/api/sales/slow", json=sale_payload(2))
-
-    assert response.status_code == 200
-    assert delays == [30]
-    assert response.json()["receipt_number"].startswith("V-LENTO-")
+    assert slow.status_code == 200
+    assert slow.json()["receipt_number"].startswith("V-LENTO-")
+    for field in ("subtotal", "tax", "total", "item_count", "items"):
+        assert slow.json()[field] == fast.json()[field]
 
 
 def test_unknown_product_returns_clear_error():
