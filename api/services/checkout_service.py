@@ -27,8 +27,7 @@ class CheckoutService:
 
     def checkout(self, user: User, cart: list[tuple[uuid_lib.UUID, int]]) -> Order:
         lines = self._merge(cart)
-        # Engine: explicit RECEIPT_ENGINE env var first, then t_parametro.MOTOR_RECIBO, then v2.
-        engine = self.engines.create(self.settings.receipt_engine or self.params.value("MOTOR_RECIBO"),
+        engine = self.engines.create(self.active_engine()[0],
                                      Decimal(self.params.value("TASA_IVA") or self.settings.tax_rate))
         # Price first, touch stock afterwards: no row is locked while the engine works.
         receipt = engine.calculate(lines, DatabaseCatalog(self.products))
@@ -58,6 +57,15 @@ class CheckoutService:
                 quantity=-item.quantity, stock_after=remaining[item.key], reason=f"Venta {order.number}"))
         self.orders.commit()
         return order
+
+    def active_engine(self) -> tuple[str, str]:
+        """(engine, where it came from): RECEIPT_ENGINE env var first, then t_parametro.MOTOR_RECIBO, then v2."""
+        if self.settings.receipt_engine:
+            return self.settings.receipt_engine, "variable de entorno RECEIPT_ENGINE"
+        stored = self.params.value("MOTOR_RECIBO")
+        if stored:
+            return stored.lower(), "t_parametro (MOTOR_RECIBO)"
+        return "v2", "valor por defecto"
 
     def history(self, user: User) -> list[Order]:
         return self.orders.for_user(user.id)

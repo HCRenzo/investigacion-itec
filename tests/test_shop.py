@@ -155,3 +155,10 @@ def test_audit_columns_ledger_and_soft_delete(client):
         db.commit()
     assert created["id"] not in {x["id"] for x in client.get("/api/products").json()}  # hidden once soft-deleted
     assert client.post("/api/admin/products", headers=a, json=new).status_code == 201  # SKU can be reused
+
+
+def test_admin_can_see_active_engine_but_customers_cannot(client):
+    h = auth(client, "curious@example.com")
+    assert client.get("/api/admin/config", headers=h).status_code == 403
+    cfg = client.get("/api/admin/config", headers=admin_headers(client)).json()
+    assert cfg["receipt_engine"] in ("v1", "v2") and cfg["source"]

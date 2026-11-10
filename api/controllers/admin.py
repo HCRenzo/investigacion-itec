@@ -2,6 +2,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends
 
+from api.config import settings
 from api.container import Services
 from api.controllers.deps import admin_user, get_services
 from api.views.presenters import OrderPresenter, ProductPresenter, ReportPresenter, UserPresenter
@@ -14,6 +15,14 @@ router = APIRouter(prefix="/api/admin", dependencies=[Depends(admin_user)])
 @public.post("/login")
 def admin_login(body: LoginRequest, services: Services = Depends(get_services)):
     return UserPresenter.session(*services.auth.login_admin(body.email, body.password))
+
+
+@router.get("/config")
+def active_config(services: Services = Depends(get_services)):
+    """Which receipt engine THIS deployment uses. Staff only: customers never see it."""
+    engine, source = services.checkout.active_engine()
+    return {"receipt_engine": engine, "source": source,
+            "legacy_work_factor": settings.legacy_work_factor if engine == "v1" else None}
 
 
 @router.get("/summary")

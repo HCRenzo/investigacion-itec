@@ -33,9 +33,9 @@ static/              Interfaz web (tienda en / y panel en /admin)
 El cliente no elige versión: se define en el servidor con `RECEIPT_ENGINE`.
 
 - **v2** (por defecto): una sola consulta al catálogo y un recorrido lineal. Casi instantáneo.
-- **v1**: código heredado ineficiente a propósito, sin `sleep`. Relee el catálogo de la base de datos en cada búsqueda, escanea sin cortar, revalida y copia todo repetidamente y reconstruye el recibo varias veces. Con `LEGACY_WORK_FACTOR=6000` un pedido de 3 líneas tarda ~30 s en esta máquina; el tiempo depende del hardware, ajustar el factor para calibrarlo.
+- **v1**: código heredado ineficiente a propósito, sin `sleep`. Relee el catálogo de la base de datos en cada búsqueda, escanea sin cortar, revalida y copia todo repetidamente y reconstruye el recibo varias veces. Con `LEGACY_WORK_FACTOR=550` un pedido de 3 líneas tarda ~30 s en esta máquina; el tiempo depende del hardware, ajustar el factor para calibrarlo.
 
-Documentación detallada, scripts para levantar ambas versiones y validación automática: [scripts/README.md](scripts/README.md).
+Documentación detallada, scripts para levantar ambas versiones y validación automática: [scripts/README.md](scripts/README.md). Para tener V1 y V2 a la vez en Vercel: [docs/DESPLIEGUE_V1_V2.md](docs/DESPLIEGUE_V1_V2.md).
 
 Cada pedido guarda el motor usado y su tiempo; el panel `/admin` los muestra (Ventas y Resumen) para comparar V1 contra V2.
 
@@ -65,7 +65,7 @@ Notas:
 | `SECRET_KEY` | Firma de sesiones (**cambiar en producción**) | clave de desarrollo |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Administrador inicial | `admin@tienda.local` / `admin1234` |
 | `RECEIPT_ENGINE` | Motor de recibo: `v1` (lento) o `v2` (rápido). Si no se define, se lee `t_parametro.MOTOR_RECIBO` | `v2` |
-| `LEGACY_WORK_FACTOR` | Cuánto trabajo inútil hace v1 | `6000` |
+| `LEGACY_WORK_FACTOR` | Cuánto trabajo inútil hace v1 | `550` |
 
 ## Tecnologias
 

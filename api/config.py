@@ -55,7 +55,7 @@ class Settings:
             demo_customer_email=os.getenv("DEMO_CUSTOMER_EMAIL", "cliente@prueba.com").lower(),
             demo_customer_password=os.getenv("DEMO_CUSTOMER_PASSWORD", "cliente1234"),
             receipt_engine=(os.getenv("RECEIPT_ENGINE") or "").lower() or None,
-            legacy_work_factor=int(os.getenv("LEGACY_WORK_FACTOR", "500")),
+            legacy_work_factor=int(os.getenv("LEGACY_WORK_FACTOR", "550")),
         )
 
 

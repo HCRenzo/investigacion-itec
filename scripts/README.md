@@ -24,7 +24,7 @@ No usa `sleep`: el tiempo viene de trabajo real innecesario. No copiar estos pat
 - Cada línea nueva revisa de nuevo todas las anteriores.
 - Reconstruye el recibo completo varias veces y exige que coincida.
 
-El tiempo depende del hardware y se calibra con `LEGACY_WORK_FACTOR` (por defecto `6000` ≈ 30 s en la máquina de desarrollo). Mientras V1 trabaja consume CPU y puede ralentizar a otros usuarios del mismo proceso.
+El tiempo depende del hardware y se calibra con `LEGACY_WORK_FACTOR` (por defecto `550` ≈ 30 s en la máquina de desarrollo). Mientras V1 trabaja consume CPU y puede ralentizar a otros usuarios del mismo proceso.
 
 ### V2 (optimizada)
 - **Una** consulta al catálogo para todas las líneas (índice por clave).
