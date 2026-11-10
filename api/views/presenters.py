@@ -11,7 +11,7 @@ def _money(value) -> str:
 class UserPresenter:
     @staticmethod
     def render(user: User) -> dict:
-        return {"id": user.id, "name": user.name, "email": user.email, "role": user.role}
+        return {"id": str(user.uuid), "name": user.name, "email": user.email, "role": user.role}
 
     @classmethod
     def session(cls, token: str, user: User) -> dict:
@@ -21,8 +21,8 @@ class UserPresenter:
 class ProductPresenter:
     @staticmethod
     def render(p: Product) -> dict:
-        return {"id": p.id, "sku": p.sku, "name": p.name, "description": p.description,
-                "category": p.category, "price": _money(p.price), "stock": p.stock, "active": p.is_active}
+        return {"id": str(p.uuid), "sku": p.sku, "name": p.name, "description": p.description,
+                "category": p.category.name, "price": _money(p.price), "stock": p.stock, "active": p.is_active}
 
     @classmethod
     def many(cls, products) -> list[dict]:
@@ -39,7 +39,7 @@ class OrderPresenter:
                        "line_total": _money(i.line_total)} for i in o.items],
             "item_count": o.item_count,
             "subtotal": _money(o.subtotal), "tax": _money(o.tax), "total": _money(o.total),
-            "processing_seconds": round(o.processing_seconds or 0, 3),
+            "processing_seconds": float(o.processing_seconds or 0),
         }
         if admin:  # customer details and the internal engine are for staff only
             data.update(customer=o.user.name, customer_email=o.user.email, engine=o.engine)

@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Depends
 
 from api.container import Services
@@ -35,5 +37,5 @@ def create_product(body: ProductIn, services: Services = Depends(get_services)):
 
 
 @router.put("/products/{product_id}")
-def update_product(product_id: int, body: ProductIn, services: Services = Depends(get_services)):
+def update_product(product_id: UUID, body: ProductIn, services: Services = Depends(get_services)):
     return ProductPresenter.render(services.catalog.update(product_id, body.model_dump()))

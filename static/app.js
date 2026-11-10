@@ -51,9 +51,9 @@ function renderCart() {
 $("#cart").addEventListener("click", async (e) => {
   const b = e.target.closest("button"); if (!b) return;
   const q = (id) => cart.find((l) => l.id === id)?.quantity || 0;
-  if (b.dataset.inc) setQty(+b.dataset.inc, q(+b.dataset.inc) + 1);
-  else if (b.dataset.dec) setQty(+b.dataset.dec, q(+b.dataset.dec) - 1);
-  else if (b.dataset.del) setQty(+b.dataset.del, 0);
+  if (b.dataset.inc) setQty(b.dataset.inc, q(b.dataset.inc) + 1);
+  else if (b.dataset.dec) setQty(b.dataset.dec, q(b.dataset.dec) - 1);
+  else if (b.dataset.del) setQty(b.dataset.del, 0);
   else if (b.id === "pay") {
     b.disabled = true; b.textContent = "Procesando…";
     const t0 = Date.now();
@@ -149,7 +149,7 @@ function viewShop() {
   draw();
   $("#q").oninput = (e) => { shopFilter.q = e.target.value; draw(); };
   $(".toolbar").onclick = (e) => { const c = e.target.closest("[data-cat]"); if (c) { shopFilter.cat = c.dataset.cat; viewShop(); } };
-  $("#grid").onclick = (e) => { const b = e.target.closest("[data-add]"); if (b) addToCart(+b.dataset.add); };
+  $("#grid").onclick = (e) => { const b = e.target.closest("[data-add]"); if (b) addToCart(b.dataset.add); };
 }
 
 async function viewOrders() {

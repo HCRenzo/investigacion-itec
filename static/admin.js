@@ -76,7 +76,7 @@ async function viewInventory() {
       <td class="num"><button class="btn" data-edit="${p.id}">Editar</button></td></tr>`).join("")}</tbody></table>`;
   const open = (p) => productForm(p, viewInventory);
   $("#new-p").onclick = () => open(null);
-  $("#box").onclick = (e) => { const b = e.target.closest("[data-edit]"); if (b) open(list.find((p) => p.id === +b.dataset.edit)); };
+  $("#box").onclick = (e) => { const b = e.target.closest("[data-edit]"); if (b) open(list.find((p) => p.id === b.dataset.edit)); };
 }
 
 function productForm(p, done) {

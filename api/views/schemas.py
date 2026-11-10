@@ -1,6 +1,7 @@
 """Request bodies (input validation)."""
 import re
 from decimal import Decimal
+from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -27,7 +28,7 @@ class LoginRequest(BaseModel):
 
 
 class CartLine(BaseModel):
-    product_id: int
+    product_id: UUID
     quantity: int = Field(gt=0, le=999)
 
 

@@ -17,7 +17,7 @@ Los endpoints `/api/sales` y `/api/sales/slow` del experimento de investigación
 
 ```
 api/
-  models/         M  Entidades: User, Product, Order, OrderItem
+  models/         M  Entidades sobre las tablas t_*: User, Role, Product, Category, Order, OrderItem...
   repositories/      Acceso a datos (UserRepository, ProductRepository, OrderRepository)
   services/          Lógica de negocio: AuthService, CatalogService, CheckoutService, ReportService
     receipt/         Motores de recibo intercambiables (patrón Strategy + Template Method + Factory)
@@ -40,21 +40,31 @@ Documentación detallada, scripts para levantar ambas versiones y validación au
 Cada pedido guarda el motor usado y su tiempo; el panel `/admin` los muestra (Ventas y Resumen) para comparar V1 contra V2.
 
 
-### Base de datos
+### Base de datos (Supabase / PostgreSQL)
 
-Se usa SQLAlchemy. Variable `DATABASE_URL`:
+El esquema son 9 tablas con prefijo `t_` (`t_rol`, `t_usuario`, `t_categoria`, `t_producto`, `t_pedido`, `t_pedido_detalle`, `t_movimiento_inventario`, `t_auditoria`, `t_parametro`). Todas llevan `id`, `uuid` y auditoría (`created_at/by`, `updated_at/by`, `deleted_at/by`). Diseño completo en [docs/PLAN_BASE_DE_DATOS.md](docs/PLAN_BASE_DE_DATOS.md).
 
-- Sin definir: SQLite local (`tienda.db`). **En Vercel este archivo no persiste**, así que allí hay que definir `DATABASE_URL`.
-- Para conectar la base del cliente: `postgresql://usuario:clave@host:5432/base` (también MySQL si se instala su driver). Las tablas (`users`, `products`, `orders`, `order_items`) se crean al arrancar; si el cliente ya tiene un esquema propio, hay que ajustar los modelos en `api/database.py`.
+1. **Crear las tablas** (una sola vez): en Supabase → *SQL Editor* ejecutar [supabase/migrations/0001_esquema.sql](supabase/migrations/0001_esquema.sql). Es repetible sin riesgo.
+2. **Conectar la app**: en Supabase → *Project Settings → Database → Connection string → Transaction pooler* (puerto 6543) y ponerla en `.env` como `DATABASE_URL=postgresql://postgres.<ref>:<PASSWORD>@aws-0-<region>.pooler.supabase.com:6543/postgres`. En Vercel, la misma variable en *Environment Variables*. Ver [.env.example](.env.example).
+3. Al arrancar, la app crea (si faltan) roles, parámetros, el catálogo de ejemplo, el administrador y el cliente de prueba.
+
+Notas:
+- La API pública de Supabase (`SUPABASE_KEY`) **no se usa**: las tablas tienen RLS activado sin políticas, solo el backend entra por `DATABASE_URL`.
+- Los identificadores que ve el navegador son `uuid`, no números.
+- `created_by` / `updated_by` y la tabla `t_auditoria` se llenan solos con el usuario autenticado. Los borrados son lógicos (`deleted_at`).
+- Cada venta descuenta stock de forma atómica y deja un movimiento en `t_movimiento_inventario`.
+- `t_parametro` guarda `TASA_IVA` y `MOTOR_RECIBO`. Si defines `RECEIPT_ENGINE` en el entorno, esa variable manda sobre la tabla (así se pueden levantar V1 y V2 a la vez sobre la misma base).
+- Sin `DATABASE_URL` se usa SQLite local (`tienda.db`), útil para desarrollo y pruebas.
+- Pruebas contra Postgres real: `TEST_DATABASE_URL=postgresql://... python -m pytest -q` (con la migración aplicada en esa base).
 
 ### Variables de entorno
 
 | Variable | Uso | Por defecto |
 |---|---|---|
-| `DATABASE_URL` | Base de datos | SQLite local |
+| `DATABASE_URL` | Conexión a Postgres (Supabase, pooler 6543) | SQLite local |
 | `SECRET_KEY` | Firma de sesiones (**cambiar en producción**) | clave de desarrollo |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Administrador inicial | `admin@tienda.local` / `admin1234` |
-| `RECEIPT_ENGINE` | Motor de recibo: `v1` (lento) o `v2` (rápido) | `v2` |
+| `RECEIPT_ENGINE` | Motor de recibo: `v1` (lento) o `v2` (rápido). Si no se define, se lee `t_parametro.MOTOR_RECIBO` | `v2` |
 | `LEGACY_WORK_FACTOR` | Cuánto trabajo inútil hace v1 | `6000` |
 
 ## Tecnologias
@@ -90,6 +100,14 @@ El problema de referencia tarda unos 3 minutos porque cada línea puede buscar s
 Se evitan servicios externos durante la transacción, las operaciones monetarias usan `Decimal`, y se calcula y serializa el recibo una sola vez. Los resultados deberían medirse también con monitoreo de latencia en producción, incluyendo cold starts.
 
 ## Desplegar en Vercel
+
+**Importante para que el login funcione:**
+
+- Las tablas, el administrador y el cliente de prueba se crean en la primera petición de cada instancia (no dependen del arranque del servidor).
+- Sin `DATABASE_URL`, Vercel usa SQLite en `/tmp`: **cada instancia tiene su propia copia temporal** y los usuarios registrados se pierden al reiniciarse o al cambiar de instancia. Para uso real define `DATABASE_URL` con una base Postgres (Neon, Supabase, Vercel Postgres…) en *Settings → Environment Variables*.
+- Define también `SECRET_KEY` (valor largo y aleatorio), `ADMIN_PASSWORD`, y `SEED_DEMO_CUSTOMER=0` para no crear el cliente de prueba `cliente@prueba.com` en producción.
+- Para probar V1 en Vercel: `RECEIPT_ENGINE=v1` (el límite de tiempo de las funciones puede cortar recibos de ~30 s).
+
 
 1. Instalar Vercel CLI: `npm i -g vercel`.
 2. Desde la raiz del proyecto ejecutar `vercel`.

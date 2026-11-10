@@ -24,10 +24,10 @@ class DatabaseCatalog(ProductCatalog):
         self.products = products
 
     def all(self) -> list[CatalogEntry]:
-        return [CatalogEntry(p.id, p.name, p.price) for p in self.products.list_active()]
+        return [CatalogEntry(p.uuid, p.name, p.price) for p in self.products.list_active()]
 
     def find_many(self, keys: Iterable[Hashable]) -> dict[Hashable, CatalogEntry]:
-        return {p.id: CatalogEntry(p.id, p.name, p.price) for p in self.products.get_many_active(keys)}
+        return {p.uuid: CatalogEntry(p.uuid, p.name, p.price) for p in self.products.get_many_active(keys)}
 
 
 class InMemoryCatalog(ProductCatalog):
