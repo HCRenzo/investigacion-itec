@@ -1,7 +1,8 @@
 "use strict";
 let user = null;
+let engineInfo = null; // which receipt engine this deployment runs (shown to staff only)
 
-function logout() { store.token = null; user = null; location.hash = "#/login"; render(); }
+function logout() { store.token = null; user = null; engineInfo = null; location.hash = "#/login"; render(); }
 
 function renderNav() {
   $("#topbar").hidden = !user;
@@ -9,7 +10,8 @@ function renderNav() {
   const route = location.hash.split("/")[1] || "resumen";
   const link = (r, label) => `<a href="#/${r}" class="${route === r ? "active" : ""}">${label}</a>`;
   $("#nav").innerHTML = link("resumen", "Resumen") + link("ventas", "Ventas") + link("inventario", "Inventario");
-  $("#userbox").innerHTML = `<span id="user-name" class="muted">${esc(user.name)}</span><button class="btn" id="logout">Salir</button>`;
+  const engine = engineInfo ? `<span class="pill ${engineInfo.receipt_engine === "v1" ? "off" : ""}" title="${esc(engineInfo.source)}">Motor ${esc(engineInfo.receipt_engine.toUpperCase())}</span>` : "";
+  $("#userbox").innerHTML = `${engine}<span id="user-name" class="muted">${esc(user.name)}</span><button class="btn" id="logout">Salir</button>`;
   $("#logout").onclick = logout;
 }
 
@@ -76,7 +78,7 @@ async function viewInventory() {
       <td class="num"><button class="btn" data-edit="${p.id}">Editar</button></td></tr>`).join("")}</tbody></table>`;
   const open = (p) => productForm(p, viewInventory);
   $("#new-p").onclick = () => open(null);
-  $("#box").onclick = (e) => { const b = e.target.closest("[data-edit]"); if (b) open(list.find((p) => p.id === +b.dataset.edit)); };
+  $("#box").onclick = (e) => { const b = e.target.closest("[data-edit]"); if (b) open(list.find((p) => p.id === b.dataset.edit)); };
 }
 
 function productForm(p, done) {
@@ -107,6 +109,7 @@ function productForm(p, done) {
 async function loadProducts() {}
 
 async function render() {
+  if (user && !engineInfo) { try { engineInfo = await api("/admin/config"); } catch {} }
   renderNav();
   if (!user) return viewLogin();
   const route = (location.hash.split("/")[1] || "resumen").split("?")[0];

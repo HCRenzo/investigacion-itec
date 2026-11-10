@@ -2,6 +2,14 @@
 import os
 from dataclasses import dataclass
 from decimal import Decimal
+from pathlib import Path
+
+try:  # load a local .env if present (real environment variables always win)
+    from dotenv import load_dotenv
+
+    load_dotenv(Path(__file__).resolve().parents[1] / ".env", override=False)
+except ImportError:
+    pass
 
 
 def _database_url() -> str:
@@ -24,8 +32,12 @@ class Settings:
     admin_email: str
     admin_password: str
     tax_rate: Decimal
+    seed_demo_customer: bool
+    demo_customer_email: str
+    demo_customer_password: str
     # Internal switch: which receipt engine the checkout uses ("v1" legacy, "v2" optimized).
-    receipt_engine: str
+    # None = take it from t_parametro (MOTOR_RECIBO). An explicit env var always wins.
+    receipt_engine: str | None
     # How many redundant passes the legacy (v1) engine performs. Higher = slower.
     legacy_work_factor: int
 
@@ -38,8 +50,12 @@ class Settings:
             admin_email=os.getenv("ADMIN_EMAIL", "admin@tienda.local").lower(),
             admin_password=os.getenv("ADMIN_PASSWORD", "admin1234"),
             tax_rate=Decimal(os.getenv("TAX_RATE", "0.21")),
-            receipt_engine=os.getenv("RECEIPT_ENGINE", "v2").lower(),
-            legacy_work_factor=int(os.getenv("LEGACY_WORK_FACTOR", "6000")),
+            # Convenience account used by the pre-filled login. Set SEED_DEMO_CUSTOMER=0 in production.
+            seed_demo_customer=os.getenv("SEED_DEMO_CUSTOMER", "1") != "0",
+            demo_customer_email=os.getenv("DEMO_CUSTOMER_EMAIL", "cliente@prueba.com").lower(),
+            demo_customer_password=os.getenv("DEMO_CUSTOMER_PASSWORD", "cliente1234"),
+            receipt_engine=(os.getenv("RECEIPT_ENGINE") or "").lower() or None,
+            legacy_work_factor=int(os.getenv("LEGACY_WORK_FACTOR", "550")),
         )
 
 

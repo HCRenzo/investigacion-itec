@@ -17,7 +17,7 @@ import urllib.request
 
 CUSTOMER = {"email": "cliente@prueba.com", "password": "cliente1234"}
 ADMIN = {"email": "admin@tienda.local", "password": "admin1234"}
-CART = [(1, 2), (2, 1), (3, 4)]  # product_id, quantity
+CART = [("P-001", 2), ("P-002", 1), ("P-003", 4)]  # sku, quantity
 
 results: list[tuple[bool, str]] = []
 
@@ -40,8 +40,10 @@ def call(base: str, path: str, body=None, token=None, timeout=180):
 
 
 def buy(base: str, token: str):
+    _, products = call(base, "/api/products")
+    ids = {p["sku"]: p["id"] for p in products}  # public ids are uuids
     started = time.perf_counter()
-    status, order = call(base, "/api/orders", {"lines": [{"product_id": p, "quantity": q} for p, q in CART]}, token)
+    status, order = call(base, "/api/orders", {"lines": [{"product_id": ids[sku], "quantity": q} for sku, q in CART]}, token)
     return status, order, time.perf_counter() - started
 
 

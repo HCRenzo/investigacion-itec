@@ -1,7 +1,14 @@
-"""Engine, session factory and schema bootstrap."""
-from sqlalchemy import create_engine, inspect, text
+"""Engine, session factory and schema bootstrap.
+
+Postgres (Supabase): the schema is owned by supabase/migrations/*.sql, the app never alters it.
+SQLite (local dev / tests, when DATABASE_URL is not set): tables are created from the models.
+"""
+import os
+import threading
+
+from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
-from sqlalchemy.pool import StaticPool
+from sqlalchemy.pool import NullPool, StaticPool
 
 from api.config import settings
 
@@ -10,45 +17,51 @@ class Base(DeclarativeBase):
     pass
 
 
-_kwargs = {}
-if settings.database_url.startswith("sqlite"):
-    _kwargs["connect_args"] = {"check_same_thread": False}
-    if ":memory:" in settings.database_url:
-        _kwargs["poolclass"] = StaticPool
+def _engine_options(url: str) -> dict:
+    if url.startswith("sqlite"):
+        options = {"connect_args": {"check_same_thread": False}}
+        if ":memory:" in url:
+            options["poolclass"] = StaticPool
+        return options
+    options = {
+        # Supabase's pooler runs in transaction mode: server-side prepared statements are not allowed.
+        "connect_args": {"prepare_threshold": None},
+        "pool_pre_ping": True,
+    }
+    if os.getenv("VERCEL"):
+        options["poolclass"] = NullPool  # serverless: let the Supabase pooler do the pooling
+    return options
 
-engine = create_engine(settings.database_url, pool_pre_ping=True, **_kwargs)
+
+engine = create_engine(settings.database_url, **_engine_options(settings.database_url))
 SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
 
-# Columns added after the first release: (table, column, DDL type with default).
-_LATE_COLUMNS = [
-    ("orders", "engine", "VARCHAR(10) DEFAULT 'v2'"),
-    ("orders", "processing_seconds", "FLOAT DEFAULT 0"),
-]
+_init_lock = threading.Lock()
+_initialized = False
+
+
+def ensure_initialized() -> None:
+    """Prepare the database once per process. Serverless hosts (Vercel) may skip ASGI lifespan,
+    so every request path calls this instead of relying on startup."""
+    global _initialized
+    if not _initialized:
+        with _init_lock:
+            if not _initialized:
+                init_db()
+                _initialized = True
 
 
 def get_db():
+    ensure_initialized()
     with SessionLocal() as session:
         yield session
 
 
 def init_db() -> None:
     from api import models  # noqa: F401  (registers the tables)
-    from api.repositories.product import ProductRepository
-    from api.repositories.user import UserRepository
-    from api.services.auth_service import AuthService
-    from api.services.seed_service import SeedService
-    from api.services.security import PasswordHasher, TokenService
+    from api.container import Services
 
-    Base.metadata.create_all(engine)
-    _add_missing_columns()
+    if engine.dialect.name == "sqlite":
+        Base.metadata.create_all(engine)
     with SessionLocal() as session:
-        auth = AuthService(UserRepository(session), PasswordHasher(), TokenService(settings))
-        SeedService(ProductRepository(session), auth, settings).run()
-
-
-def _add_missing_columns() -> None:
-    inspector = inspect(engine)
-    with engine.begin() as conn:
-        for table, column, ddl in _LATE_COLUMNS:
-            if column not in {c["name"] for c in inspector.get_columns(table)}:
-                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}"))
+        Services(session).seed.run()

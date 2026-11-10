@@ -10,6 +10,11 @@ def client():
         yield c
 
 
+def pid(client, sku):
+    """Public product id (uuid) for a SKU."""
+    return {p["sku"]: p["id"] for p in client.get("/api/products").json()}[sku]
+
+
 def auth(client, email, password="password123", name="Ana Perez"):
     r = client.post("/api/auth/register", json={"name": name, "email": email, "password": password})
     assert r.status_code == 201, r.text
@@ -38,29 +43,29 @@ def test_weak_password_rejected(client):
 
 
 def test_checkout_requires_login(client):
-    assert client.post("/api/orders", json={"lines": [{"product_id": 1, "quantity": 1}]}).status_code == 401
+    assert client.post("/api/orders", json={"lines": [{"product_id": pid(client, "P-001"), "quantity": 1}]}).status_code == 401
 
 
 def test_purchase_updates_stock_and_history(client):
     h = auth(client, "buyer@example.com", name="Comprador")
-    before = {p["id"]: p for p in client.get("/api/products").json()}
+    before = {p["sku"]: p for p in client.get("/api/products").json()}
     r = client.post("/api/orders", headers=h, json={"lines": [
-        {"product_id": 1, "quantity": 2}, {"product_id": 2, "quantity": 3}]})
+        {"product_id": pid(client, "P-001"), "quantity": 2}, {"product_id": pid(client, "P-002"), "quantity": 3}]})
     assert r.status_code == 201, r.text
     order = r.json()
     assert order["subtotal"] == "36.25" and order["tax"] == "7.61" and order["total"] == "43.86"
-    after = {p["id"]: p for p in client.get("/api/products").json()}
-    assert after[1]["stock"] == before[1]["stock"] - 2
+    after = {p["sku"]: p for p in client.get("/api/products").json()}
+    assert after["P-001"]["stock"] == before["P-001"]["stock"] - 2
     assert len(client.get("/api/orders", headers=h).json()) == 1
 
 
 def test_insufficient_stock_is_rejected_and_not_decremented(client):
     h = auth(client, "greedy@example.com")
-    stock = {p["id"]: p["stock"] for p in client.get("/api/products").json()}
+    stock = {p["sku"]: p["stock"] for p in client.get("/api/products").json()}
     r = client.post("/api/orders", headers=h, json={"lines": [
-        {"product_id": 2, "quantity": 1}, {"product_id": 4, "quantity": stock[4] + 1}]})
+        {"product_id": pid(client, "P-002"), "quantity": 1}, {"product_id": pid(client, "P-004"), "quantity": stock["P-004"] + 1}]})
     assert r.status_code == 409
-    again = {p["id"]: p["stock"] for p in client.get("/api/products").json()}
+    again = {p["sku"]: p["stock"] for p in client.get("/api/products").json()}
     assert again == stock
 
 
@@ -73,7 +78,7 @@ def test_admin_endpoints_are_protected(client):
 
 def test_admin_sees_sales_and_manages_products(client):
     h = auth(client, "seller@example.com")
-    client.post("/api/orders", headers=h, json={"lines": [{"product_id": 3, "quantity": 1}]})
+    client.post("/api/orders", headers=h, json={"lines": [{"product_id": pid(client, "P-003"), "quantity": 1}]})
     a = admin_headers(client)
     summary = client.get("/api/admin/summary", headers=a).json()
     assert summary["orders"] >= 1 and summary["top_products"]
@@ -86,8 +91,8 @@ def test_admin_sees_sales_and_manages_products(client):
     assert created.status_code == 201
     assert client.post("/api/admin/products", headers=a, json=new).status_code == 409
     new["stock"] = 0
-    pid = created.json()["id"]
-    assert client.put(f"/api/admin/products/{pid}", headers=a, json=new).json()["stock"] == 0
+    new_id = created.json()["id"]
+    assert client.put(f"/api/admin/products/{new_id}", headers=a, json=new).json()["stock"] == 0
 
 
 def test_engine_is_internal_and_both_engines_agree(client, monkeypatch):
@@ -97,7 +102,7 @@ def test_engine_is_internal_and_both_engines_agree(client, monkeypatch):
     from api.config import settings
 
     h = auth(client, "versions@example.com")
-    body = {"lines": [{"product_id": 2, "quantity": 2}, {"product_id": 3, "quantity": 1}]}
+    body = {"lines": [{"product_id": pid(client, "P-002"), "quantity": 2}, {"product_id": pid(client, "P-003"), "quantity": 1}]}
     totals = {}
     for engine in ("v1", "v2"):
         monkeypatch.setattr(container, "settings", replace(settings, receipt_engine=engine))
@@ -117,3 +122,43 @@ def test_admin_and_client_logins_are_separate(client):
     admin = {"email": "admin@test.local", "password": "admin-pass-1"}
     assert client.post("/api/auth/login", json=admin).status_code == 403
     assert client.get("/admin").status_code == 200
+
+
+def test_audit_columns_ledger_and_soft_delete(client):
+    from sqlalchemy import select
+
+    from api.database import SessionLocal
+    from api.models import InventoryMovement, Order, Product, User
+
+    h = auth(client, "audit@example.com", name="Auditada")
+    r = client.post("/api/orders", headers=h, json={"lines": [{"product_id": pid(client, "P-005"), "quantity": 3}]})
+    assert r.status_code == 201, r.text
+    with SessionLocal() as db:
+        user = db.scalar(select(User).where(User.email == "audit@example.com"))
+        order = db.scalar(select(Order).where(Order.number == r.json()["number"]))
+        assert order.created_by == user.id and order.updated_by == user.id  # who bought
+        assert order.uuid and order.created_at and order.deleted_at is None
+        move = db.scalar(select(InventoryMovement).where(InventoryMovement.order_id == order.id))
+        assert move.type == "VENTA" and move.quantity == -3 and move.created_by == user.id
+        product = db.scalar(select(Product).where(Product.sku == "P-005"))
+        assert move.stock_after == product.stock
+
+    a = admin_headers(client)
+    new = {"sku": "SD-1", "name": "Borrable", "description": "", "category": "Escritura",
+           "price": "1.00", "stock": 4, "active": True}
+    created = client.post("/api/admin/products", headers=a, json=new).json()
+    with SessionLocal() as db:
+        p = db.scalar(select(Product).where(Product.sku == "SD-1"))
+        admin = db.scalar(select(User).where(User.email == "admin@test.local"))
+        assert p.created_by == admin.id
+        p.soft_delete()
+        db.commit()
+    assert created["id"] not in {x["id"] for x in client.get("/api/products").json()}  # hidden once soft-deleted
+    assert client.post("/api/admin/products", headers=a, json=new).status_code == 201  # SKU can be reused
+
+
+def test_admin_can_see_active_engine_but_customers_cannot(client):
+    h = auth(client, "curious@example.com")
+    assert client.get("/api/admin/config", headers=h).status_code == 403
+    cfg = client.get("/api/admin/config", headers=admin_headers(client)).json()
+    assert cfg["receipt_engine"] in ("v1", "v2") and cfg["source"]

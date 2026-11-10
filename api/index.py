@@ -1,13 +1,18 @@
 """Application entry point (Vercel looks for `app` here)."""
+import sys
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+# Make `import api...` work regardless of the host's working directory.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from api.controllers import admin, auth, pages, research, shop
 from api.controllers.pages import STATIC
-from api.database import init_db
+from api.database import ensure_initialized
 from api.errors import DomainError
 
 
@@ -22,7 +27,7 @@ class NoCacheStaticFiles(StaticFiles):
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    init_db()
+    ensure_initialized()
     yield
 
 
