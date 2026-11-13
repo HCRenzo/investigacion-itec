@@ -131,3 +131,6 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .mode:hover { border-color: var(--brand); }
 .mode.on { border-color: var(--brand); background: var(--brand-soft); }
 .mode:disabled { opacity: .6; cursor: wait; }
+.alert { background: #fef2f2; color: #991b1b; border-bottom: 1px solid #fecaca; padding: 12px max(16px, calc((100% - 1120px) / 2)); font-size: 14px; line-height: 1.45; }
+.alert code { background: rgba(0,0,0,.08); padding: 1px 5px; border-radius: 4px; }
+@media (prefers-color-scheme: dark) { .alert { background: #3b1111; color: #fecaca; border-color: #5c1a1a; } }

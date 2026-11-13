@@ -180,3 +180,17 @@ def test_admin_switches_engine_from_panel_and_checkout_follows(client):
     finally:
         cfg = client.put("/api/admin/config", headers=a, json={"receipt_engine": "auto"}).json()
     assert cfg["mode"] == "auto" and cfg["source"] != "panel de administración"
+
+
+def test_admin_sees_which_database_is_in_use(client):
+    cfg = client.get("/api/admin/config", headers=admin_headers(client)).json()
+    db = cfg["database"]
+    assert db["connected"] is True and db["dialect"] in ("sqlite", "postgresql")
+    assert {"t_usuario", "t_producto", "t_pedido", "t_movimiento_inventario"} <= set(db["counts"])
+    assert "password" not in str(db).lower()
+
+
+def test_database_url_is_cleaned_for_psycopg():
+    from api.config import _clean
+    url = _clean("postgresql+psycopg://u:p@h.pooler.supabase.com:6543/postgres?pgbouncer=true&sslmode=require")
+    assert "pgbouncer" not in url and "sslmode=require" in url

@@ -4,7 +4,19 @@ let engineInfo = null; // which receipt engine this deployment runs (shown to st
 
 function logout() { store.token = null; user = null; engineInfo = null; location.hash = "#/login"; render(); }
 
+function renderBanner() {
+  const d = engineInfo?.database;
+  let html = "";
+  if (d && !d.persistent) {
+    html = `<div class="alert"><strong>Este despliegue NO está conectado a Supabase.</strong> Está usando una base SQLite temporal (${esc(d.host)}), por eso tus tablas no se leen ni se escriben y los datos se pierden al reiniciar. Define <code>DATABASE_URL</code> en las variables de entorno de Vercel y vuelve a desplegar.</div>`;
+  } else if (d && !d.connected) {
+    html = `<div class="alert"><strong>No se pudo leer la base de datos</strong> (${esc(d.error || "error")}). Revisa que <code>DATABASE_URL</code> sea correcta y que hayas ejecutado <code>0001_esquema.sql</code>.</div>`;
+  }
+  $("#banner").innerHTML = html;
+}
+
 function renderNav() {
+  renderBanner();
   $("#topbar").hidden = !user;
   if (!user) return;
   const route = location.hash.split("/")[1] || "resumen";
@@ -113,10 +125,14 @@ async function viewConfig() {
     ["v2", "V2 · Optimizada", "Recibo casi inmediato. Se aplica a todos los despliegues que comparten esta base."],
     ["v1", "V1 · Original", "Recibo lento a propósito (~20-30 s). Se aplica a todos los despliegues que comparten esta base."],
   ];
+  const dbCard = (d) => `<div class="card pad" style="margin-top:16px"><h2>Base de datos</h2>
+      <p class="muted">${d.persistent ? "Conectada a" : "<strong>Temporal (no es Supabase):</strong>"} ${esc(d.dialect)} · ${esc(d.host)}${d.database && d.persistent ? " / " + esc(d.database) : ""}
+        ${d.supabase ? '· <span class="pill">Supabase</span>' : ""} ${d.connected ? '· <span class="pill">Lectura correcta</span>' : '· <span class="pill off">Sin conexión</span>'}</p>
+      ${d.connected ? `<div class="receipt-row"><span>Filas por tabla</span><span></span></div>` + Object.entries(d.counts).map(([t, n]) => `<div class="receipt-row"><span>${esc(t)}</span><strong>${n}</strong></div>`).join("") : ""}</div>`;
   const draw = (c) => {
     engineInfo = c; renderNav();
     $("#box").className = "";
-    $("#box").innerHTML = `<div class="card pad">
+    $("#box").innerHTML = (c.database ? dbCard(c.database) : "") + `<div class="card pad" style="margin-top:16px">
       <h2>Motor de generación del recibo</h2>
       <p class="muted">Activo ahora: <strong>${esc(c.receipt_engine.toUpperCase())}</strong> · origen: ${esc(c.source)}${c.env_engine ? ` · variable de entorno de este despliegue: ${esc(c.env_engine.toUpperCase())}` : ""}.
         El cliente nunca ve esta opción; el cambio aplica a las próximas compras.</p>

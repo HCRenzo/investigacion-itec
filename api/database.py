@@ -3,6 +3,7 @@
 Postgres (Supabase): the schema is owned by supabase/migrations/*.sql, the app never alters it.
 SQLite (local dev / tests, when DATABASE_URL is not set): tables are created from the models.
 """
+import logging
 import os
 import threading
 
@@ -11,6 +12,9 @@ from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from sqlalchemy.pool import NullPool, StaticPool
 
 from api.config import settings
+
+
+log = logging.getLogger("tienda.db")
 
 
 class Base(DeclarativeBase):
@@ -61,7 +65,19 @@ def init_db() -> None:
     from api import models  # noqa: F401  (registers the tables)
     from api.container import Services
 
+    info = describe_database()
+    log.warning("Base de datos: %s en %s (%s)", info["dialect"], info["host"],
+                "persistente" if info["persistent"] else "TEMPORAL, no es Supabase: defina DATABASE_URL")
     if engine.dialect.name == "sqlite":
         Base.metadata.create_all(engine)
     with SessionLocal() as session:
         Services(session).seed.run()
+
+
+def describe_database() -> dict:
+    """Where this process is really reading/writing. Never includes credentials."""
+    url = engine.url
+    persistent = engine.dialect.name != "sqlite"
+    return {"dialect": engine.dialect.name, "host": url.host or "(archivo local)",
+            "database": url.database, "persistent": persistent,
+            "supabase": bool(url.host and "supabase" in url.host)}
