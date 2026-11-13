@@ -51,7 +51,7 @@ class SeedService:
             if self.roles.by_code(code) is None:
                 self.roles.add(Role(code=code, name=name, description=description))
         self.params.ensure("TASA_IVA", str(self.settings.tax_rate), "Tasa de impuesto aplicada a los pedidos")
-        self.params.ensure("MOTOR_RECIBO", "v2", "Motor de calculo del recibo: v1 (lento) o v2 (rapido)")
+        self.params.ensure("MOTOR_RECIBO", "auto", "Motor de calculo del recibo: v1 (lento), v2 (rapido) o auto (usa el entorno)")
         self.products.commit()
 
         if not self.products.any_exists():

@@ -49,6 +49,13 @@ class ParameterRepository(BaseRepository):
         return self.session.scalar(
             select(Parameter.value).where(Parameter.key == key, Parameter.deleted_at.is_(None)))
 
+    def set(self, key: str, value: str, description: str = "") -> None:
+        row = self.session.scalar(select(Parameter).where(Parameter.key == key, Parameter.deleted_at.is_(None)))
+        if row is None:
+            self.add(Parameter(key=key, value=value, description=description))
+        else:
+            row.value = value
+
     def ensure(self, key: str, value: str, description: str = "") -> None:
         if self.value(key) is None:
             self.add(Parameter(key=key, value=value, description=description))

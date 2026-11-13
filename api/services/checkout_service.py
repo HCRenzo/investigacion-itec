@@ -8,6 +8,7 @@ from api.errors import InsufficientStockError
 from api.models import MOVEMENT_SALE, ORDER_PAID, InventoryMovement, Order, OrderItem, User
 from api.repositories.order import MovementRepository, OrderRepository, ParameterRepository
 from api.repositories.product import ProductRepository
+from api.services.config_service import ConfigService
 from api.services.receipt import DatabaseCatalog, OrderLine, ReceiptEngineFactory
 
 MILLIS = Decimal("0.001")
@@ -17,17 +18,19 @@ class CheckoutService:
     """Turns a cart into a persisted order. The receipt engine (v1/v2) is an internal detail."""
 
     def __init__(self, products: ProductRepository, orders: OrderRepository, movements: MovementRepository,
-                 params: ParameterRepository, engines: ReceiptEngineFactory, settings: Settings):
+                 params: ParameterRepository, config: ConfigService, engines: ReceiptEngineFactory,
+                 settings: Settings):
         self.products = products
         self.orders = orders
         self.movements = movements
         self.params = params
+        self.config = config
         self.engines = engines
         self.settings = settings
 
     def checkout(self, user: User, cart: list[tuple[uuid_lib.UUID, int]]) -> Order:
         lines = self._merge(cart)
-        engine = self.engines.create(self.active_engine()[0],
+        engine = self.engines.create(self.config.active_engine()[0],
                                      Decimal(self.params.value("TASA_IVA") or self.settings.tax_rate))
         # Price first, touch stock afterwards: no row is locked while the engine works.
         receipt = engine.calculate(lines, DatabaseCatalog(self.products))
@@ -57,15 +60,6 @@ class CheckoutService:
                 quantity=-item.quantity, stock_after=remaining[item.key], reason=f"Venta {order.number}"))
         self.orders.commit()
         return order
-
-    def active_engine(self) -> tuple[str, str]:
-        """(engine, where it came from): RECEIPT_ENGINE env var first, then t_parametro.MOTOR_RECIBO, then v2."""
-        if self.settings.receipt_engine:
-            return self.settings.receipt_engine, "variable de entorno RECEIPT_ENGINE"
-        stored = self.params.value("MOTOR_RECIBO")
-        if stored:
-            return stored.lower(), "t_parametro (MOTOR_RECIBO)"
-        return "v2", "valor por defecto"
 
     def history(self, user: User) -> list[Order]:
         return self.orders.for_user(user.id)

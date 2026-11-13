@@ -162,3 +162,21 @@ def test_admin_can_see_active_engine_but_customers_cannot(client):
     assert client.get("/api/admin/config", headers=h).status_code == 403
     cfg = client.get("/api/admin/config", headers=admin_headers(client)).json()
     assert cfg["receipt_engine"] in ("v1", "v2") and cfg["source"]
+
+
+def test_admin_switches_engine_from_panel_and_checkout_follows(client):
+    a = admin_headers(client)
+    h = auth(client, "switch@example.com")
+    body = {"lines": [{"product_id": pid(client, "P-002"), "quantity": 1}]}
+    try:
+        assert client.put("/api/admin/config", headers=h, json={"receipt_engine": "v1"}).status_code == 403
+        assert client.put("/api/admin/config", headers=a, json={"receipt_engine": "turbo"}).status_code == 422
+        for engine in ("v1", "v2"):
+            cfg = client.put("/api/admin/config", headers=a, json={"receipt_engine": engine}).json()
+            assert cfg["receipt_engine"] == engine and cfg["source"] == "panel de administración"
+            assert client.post("/api/orders", headers=h, json=body).status_code == 201
+            newest = client.get("/api/admin/orders", headers=a).json()[0]
+            assert newest["engine"] == engine  # the panel setting really drives the receipt engine
+    finally:
+        cfg = client.put("/api/admin/config", headers=a, json={"receipt_engine": "auto"}).json()
+    assert cfg["mode"] == "auto" and cfg["source"] != "panel de administración"

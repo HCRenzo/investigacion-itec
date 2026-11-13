@@ -11,6 +11,7 @@ from api.repositories.user import RoleRepository, UserRepository
 from api.services.auth_service import AuthService
 from api.services.catalog_service import CatalogService
 from api.services.checkout_service import CheckoutService
+from api.services.config_service import ConfigService
 from api.services.receipt import ReceiptEngineFactory
 from api.services.report_service import ReportService
 from api.services.security import PasswordHasher, TokenService
@@ -37,9 +38,13 @@ class Services:
         return CatalogService(self.products, self.categories, self.movements)
 
     @cached_property
+    def config(self) -> ConfigService:
+        return ConfigService(self.params, settings)
+
+    @cached_property
     def checkout(self) -> CheckoutService:
         return CheckoutService(self.products, self.orders, self.movements, self.params,
-                               ReceiptEngineFactory(settings), settings)
+                               self.config, ReceiptEngineFactory(settings), settings)
 
     @cached_property
     def reports(self) -> ReportService:

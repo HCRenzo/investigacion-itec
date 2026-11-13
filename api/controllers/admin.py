@@ -2,11 +2,10 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends
 
-from api.config import settings
 from api.container import Services
 from api.controllers.deps import admin_user, get_services
 from api.views.presenters import OrderPresenter, ProductPresenter, ReportPresenter, UserPresenter
-from api.views.schemas import LoginRequest, ProductIn
+from api.views.schemas import EngineIn, LoginRequest, ProductIn
 
 public = APIRouter(prefix="/api/admin")  # login only; everything else requires an admin token
 router = APIRouter(prefix="/api/admin", dependencies=[Depends(admin_user)])
@@ -20,9 +19,14 @@ def admin_login(body: LoginRequest, services: Services = Depends(get_services)):
 @router.get("/config")
 def active_config(services: Services = Depends(get_services)):
     """Which receipt engine THIS deployment uses. Staff only: customers never see it."""
-    engine, source = services.checkout.active_engine()
-    return {"receipt_engine": engine, "source": source,
-            "legacy_work_factor": settings.legacy_work_factor if engine == "v1" else None}
+    return services.config.describe()
+
+
+@router.put("/config")
+def change_engine(body: EngineIn, services: Services = Depends(get_services)):
+    """Switch the receipt engine from the panel: 'v1', 'v2', or 'auto' (follow this deployment's environment)."""
+    services.config.set_mode(body.receipt_engine)
+    return services.config.describe()
 
 
 @router.get("/summary")

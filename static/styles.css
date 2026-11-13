@@ -125,3 +125,9 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 .admin-auth { width: min(820px, 100%); }
 .admin-hero { background: linear-gradient(145deg, #0f172a, #1e293b 60%, #334155); }
+.modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 16px; }
+.mode { text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 14px; cursor: pointer; display: grid; gap: 6px; }
+.mode small { color: var(--muted); font-weight: 500; line-height: 1.35; }
+.mode:hover { border-color: var(--brand); }
+.mode.on { border-color: var(--brand); background: var(--brand-soft); }
+.mode:disabled { opacity: .6; cursor: wait; }

@@ -9,7 +9,7 @@ function renderNav() {
   if (!user) return;
   const route = location.hash.split("/")[1] || "resumen";
   const link = (r, label) => `<a href="#/${r}" class="${route === r ? "active" : ""}">${label}</a>`;
-  $("#nav").innerHTML = link("resumen", "Resumen") + link("ventas", "Ventas") + link("inventario", "Inventario");
+  $("#nav").innerHTML = link("resumen", "Resumen") + link("ventas", "Ventas") + link("inventario", "Inventario") + link("config", "Configuración");
   const engine = engineInfo ? `<span class="pill ${engineInfo.receipt_engine === "v1" ? "off" : ""}" title="${esc(engineInfo.source)}">Motor ${esc(engineInfo.receipt_engine.toUpperCase())}</span>` : "";
   $("#userbox").innerHTML = `${engine}<span id="user-name" class="muted">${esc(user.name)}</span><button class="btn" id="logout">Salir</button>`;
   $("#logout").onclick = logout;
@@ -106,6 +106,33 @@ function productForm(p, done) {
 }
 
 
+async function viewConfig() {
+  $("#app").innerHTML = '<div class="page-head"><h1>Configuración</h1></div><div id="box" class="muted">Cargando…</div>';
+  const modes = [
+    ["auto", "Automático", "Cada despliegue usa su propia variable RECEIPT_ENGINE (o V2 si no existe)."],
+    ["v2", "V2 · Optimizada", "Recibo casi inmediato. Se aplica a todos los despliegues que comparten esta base."],
+    ["v1", "V1 · Original", "Recibo lento a propósito (~20-30 s). Se aplica a todos los despliegues que comparten esta base."],
+  ];
+  const draw = (c) => {
+    engineInfo = c; renderNav();
+    $("#box").className = "";
+    $("#box").innerHTML = `<div class="card pad">
+      <h2>Motor de generación del recibo</h2>
+      <p class="muted">Activo ahora: <strong>${esc(c.receipt_engine.toUpperCase())}</strong> · origen: ${esc(c.source)}${c.env_engine ? ` · variable de entorno de este despliegue: ${esc(c.env_engine.toUpperCase())}` : ""}.
+        El cliente nunca ve esta opción; el cambio aplica a las próximas compras.</p>
+      <div class="modes">${modes.map(([id, title, text]) => `
+        <button class="mode ${c.mode === id ? "on" : ""}" data-mode="${id}" aria-pressed="${c.mode === id}">
+          <strong>${esc(title)}</strong><small>${esc(text)}</small></button>`).join("")}</div></div>`;
+  };
+  draw(await api("/admin/config"));
+  $("#box").onclick = async (e) => {
+    const b = e.target.closest("[data-mode]"); if (!b || b.classList.contains("on")) return;
+    b.disabled = true;
+    try { draw(await api("/admin/config", { method: "PUT", body: { receipt_engine: b.dataset.mode } })); toast("Motor actualizado"); }
+    catch (err) { toast(err.message); b.disabled = false; }
+  };
+}
+
 async function loadProducts() {}
 
 async function render() {
@@ -116,6 +143,7 @@ async function render() {
   try {
     if (route === "ventas") await viewSales();
     else if (route === "inventario") await viewInventory();
+    else if (route === "config") await viewConfig();
     else await viewSummary();
   } catch (err) { toast(err.message); }
 }

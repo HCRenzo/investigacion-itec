@@ -1,6 +1,7 @@
 """Request bodies (input validation)."""
 import re
 from decimal import Decimal
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
@@ -54,3 +55,7 @@ class SaleLine(BaseModel):
 class SaleRequest(BaseModel):
     customer: str = Field(min_length=1, max_length=120)
     lines: list[SaleLine] = Field(min_length=1, max_length=500)
+
+
+class EngineIn(BaseModel):
+    receipt_engine: Literal["auto", "v1", "v2"]
