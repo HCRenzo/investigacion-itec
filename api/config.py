@@ -3,6 +3,7 @@ import os
 from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import Path
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 try:  # load a local .env if present (real environment variables always win)
     from dotenv import load_dotenv
@@ -12,16 +13,23 @@ except ImportError:
     pass
 
 
+def _clean(url: str) -> str:
+    """Drop query params psycopg does not understand (e.g. ?pgbouncer=true copied from Prisma examples)."""
+    parts = urlsplit(url)
+    query = [(k, v) for k, v in parse_qsl(parts.query) if k.lower() not in {"pgbouncer", "connection_limit", "schema"}]
+    return urlunsplit(parts._replace(query=urlencode(query)))
+
+
 def _database_url() -> str:
-    url = os.getenv("DATABASE_URL")
+    url = (os.getenv("DATABASE_URL") or "").strip().strip('"').strip("'")
     if not url:
         # Vercel only allows writes to /tmp; define DATABASE_URL (Postgres) there for real persistence.
         return "sqlite:////tmp/tienda.db" if os.getenv("VERCEL") else "sqlite:///tienda.db"
     if url.startswith("postgres://"):
-        return url.replace("postgres://", "postgresql+psycopg://", 1)
+        return _clean(url.replace("postgres://", "postgresql+psycopg://", 1))
     if url.startswith("postgresql://"):
-        return url.replace("postgresql://", "postgresql+psycopg://", 1)
-    return url
+        return _clean(url.replace("postgresql://", "postgresql+psycopg://", 1))
+    return _clean(url) if url.startswith("postgresql") else url
 
 
 @dataclass(frozen=True)

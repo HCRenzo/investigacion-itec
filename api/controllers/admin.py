@@ -19,14 +19,14 @@ def admin_login(body: LoginRequest, services: Services = Depends(get_services)):
 @router.get("/config")
 def active_config(services: Services = Depends(get_services)):
     """Which receipt engine THIS deployment uses. Staff only: customers never see it."""
-    return services.config.describe()
+    return {**services.config.describe(), "database": services.reports.database_status()}
 
 
 @router.put("/config")
 def change_engine(body: EngineIn, services: Services = Depends(get_services)):
     """Switch the receipt engine from the panel: 'v1', 'v2', or 'auto' (follow this deployment's environment)."""
     services.config.set_mode(body.receipt_engine)
-    return services.config.describe()
+    return {**services.config.describe(), "database": services.reports.database_status()}
 
 
 @router.get("/summary")
