@@ -30,7 +30,7 @@ static/              Interfaz web (tienda en / y panel en /admin)
 
 ### Motores de recibo V1 / V2 (interno)
 
-El cliente no elige versión: se define en el servidor con `RECEIPT_ENGINE`.
+El cliente no elige versión. Se elige desde el panel `/admin` → *Configuración* (V1, V2 o Automático) o con la variable `RECEIPT_ENGINE` (ver [docs/DESPLIEGUE_V1_V2.md](docs/DESPLIEGUE_V1_V2.md)). Prioridad: panel → variable de entorno → V2.
 
 - **v2** (por defecto): una sola consulta al catálogo y un recorrido lineal. Casi instantáneo.
 - **v1**: código heredado ineficiente a propósito, sin `sleep`. Relee el catálogo de la base de datos en cada búsqueda, escanea sin cortar, revalida y copia todo repetidamente y reconstruye el recibo varias veces. Con `LEGACY_WORK_FACTOR=550` un pedido de 3 líneas tarda ~30 s en esta máquina; el tiempo depende del hardware, ajustar el factor para calibrarlo.
@@ -53,7 +53,7 @@ Notas:
 - Los identificadores que ve el navegador son `uuid`, no números.
 - `created_by` / `updated_by` y la tabla `t_auditoria` se llenan solos con el usuario autenticado. Los borrados son lógicos (`deleted_at`).
 - Cada venta descuenta stock de forma atómica y deja un movimiento en `t_movimiento_inventario`.
-- `t_parametro` guarda `TASA_IVA` y `MOTOR_RECIBO`. Si defines `RECEIPT_ENGINE` en el entorno, esa variable manda sobre la tabla (así se pueden levantar V1 y V2 a la vez sobre la misma base).
+- `t_parametro` guarda `TASA_IVA` y `MOTOR_RECIBO`. `MOTOR_RECIBO` vale `v1`, `v2` o `auto`: en `auto` cada despliegue usa su variable `RECEIPT_ENGINE` (así se pueden levantar V1 y V2 a la vez sobre la misma base).
 - Sin `DATABASE_URL` se usa SQLite local (`tienda.db`), útil para desarrollo y pruebas.
 - Pruebas contra Postgres real: `TEST_DATABASE_URL=postgresql://... python -m pytest -q` (con la migración aplicada en esa base).
 
@@ -64,7 +64,7 @@ Notas:
 | `DATABASE_URL` | Conexión a Postgres (Supabase, pooler 6543) | SQLite local |
 | `SECRET_KEY` | Firma de sesiones (**cambiar en producción**) | clave de desarrollo |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Administrador inicial | `admin@tienda.local` / `admin1234` |
-| `RECEIPT_ENGINE` | Motor de recibo: `v1` (lento) o `v2` (rápido). Si no se define, se lee `t_parametro.MOTOR_RECIBO` | `v2` |
+| `RECEIPT_ENGINE` | Motor de recibo: `v1` (lento) o `v2` (rápido). Solo aplica si el panel está en *Automático* | `v2` |
 | `LEGACY_WORK_FACTOR` | Cuánto trabajo inútil hace v1 | `550` |
 
 ## Tecnologias

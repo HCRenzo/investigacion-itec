@@ -1,4 +1,25 @@
-# Separar V1 y V2 en Vercel (misma base de Supabase)
+# Elegir V1 o V2 (panel de administración y Vercel)
+
+## Opción recomendada: cambiarlo desde el panel `/admin`
+
+1. En Supabase → *SQL Editor* ejecuta **una vez** `supabase/migrations/0002_motor_recibo_auto.sql` (deja la fila `MOTOR_RECIBO` de `t_parametro` en `auto`).
+2. Entra a `https://<tu-proyecto>/admin` → pestaña **Configuración**.
+3. Elige el modo. Se aplica a la siguiente compra, **sin redesplegar**:
+
+| Modo | Qué hace |
+|---|---|
+| **V2 · Optimizada** | Todas las compras usan V2. Aplica a **todos** los despliegues que comparten la base. |
+| **V1 · Original** | Todas las compras usan V1 (lenta a propósito). Aplica a **todos** los despliegues que comparten la base. |
+| **Automático** | Cada despliegue usa su propia variable `RECEIPT_ENGINE` (o V2 si no existe). Es lo que permite tener dos proyectos de Vercel con motores distintos a la vez. |
+
+La etiqueta **Motor V1 / V2** del panel indica qué se está usando y de dónde viene (panel, variable de entorno o valor por defecto). Cada cambio queda auditado en `t_auditoria` con el administrador que lo hizo.
+
+> Si solo tienes **un** proyecto de Vercel, usa V1 o V2 en el panel y olvídate de `RECEIPT_ENGINE`.
+> Si el panel está en V1 o V2 (no en Automático), **manda sobre la variable de entorno**: por eso `RECEIPT_ENGINE` parece "no funcionar" cuando alguien dejó fijado un modo.
+
+Orden de prioridad: **panel (v1/v2) → variable `RECEIPT_ENGINE` → V2**.
+
+## Alternativa: dos proyectos de Vercel con la misma base (modo Automático)
 
 El motor del recibo lo decide la variable de entorno `RECEIPT_ENGINE` de **cada despliegue**. Para probar las dos versiones a la vez en Vercel hay que tener **dos proyectos de Vercel apuntando al mismo repositorio**. Ambos usan la misma base de Supabase, así que comparten usuarios, productos y stock, y todos los pedidos (con su motor y su tiempo) aparecen juntos en el panel `/admin`.
 
@@ -50,7 +71,6 @@ vercel --prod
 
 V1 tarda 20-30 s. Si tu plan o tu configuración limita las funciones a menos tiempo (el límite por defecto depende del plan y de si tienes *Fluid Compute*), Vercel cortará la compra con un error 504 y **no se guardará el pedido**. Revisa el límite en *Settings → Functions → Max Duration* del proyecto V1. Si no puedes subirlo, baja `LEGACY_WORK_FACTOR` en V1 (por ejemplo a `200`) para que el recibo termine dentro del límite.
 
-## Alternativas
+## Local
 
-- **Cambiar el motor sin redesplegar** (un solo proyecto): no definas `RECEIPT_ENGINE` y edita en Supabase la fila `MOTOR_RECIBO` de `t_parametro` (`v1`/`v2`). Sirve para alternar, pero **no** para tener las dos versiones a la vez.
 - **Local**: `scripts/start_all.sh` levanta V2 (:8010) y V1 (:8011) con la base local (SQLite), sin tocar Supabase ni tu `.env`.

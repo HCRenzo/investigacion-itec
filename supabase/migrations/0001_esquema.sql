@@ -259,5 +259,5 @@ on conflict (codigo) where deleted_at is null do nothing;
 
 insert into t_parametro (clave, valor, descripcion) values
   ('TASA_IVA',      '0.21', 'Tasa de impuesto aplicada a los pedidos'),
-  ('MOTOR_RECIBO',  'v2',   'Motor de calculo del recibo: v1 (lento) o v2 (rapido)')
+  ('MOTOR_RECIBO',  'auto', 'Motor de calculo del recibo: v1 (lento), v2 (rapido) o auto (usa el entorno)')
 on conflict (clave) where deleted_at is null do nothing;
