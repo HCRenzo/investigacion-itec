@@ -32,14 +32,14 @@ El motor del recibo lo decide la variable de entorno `RECEIPT_ENGINE` de **cada 
 
 ## Variables de entorno
 
-Idénticas en los dos proyectos, **salvo** `RECEIPT_ENGINE` (y opcionalmente `LEGACY_WORK_FACTOR`, solo en V1).
+Idénticas en los dos proyectos, **salvo** `RECEIPT_ENGINE` (y opcionalmente `LEGACY_TARGET_SECONDS`, solo en V1).
 
 | Variable | Valor | Notas |
 |---|---|---|
 | `DATABASE_URL` | cadena del *Transaction pooler* de Supabase (puerto 6543) | La misma en ambos |
 | `SECRET_KEY` | texto largo aleatorio | **La misma en ambos** (si no, una sesión de uno no vale en el otro) |
 | `RECEIPT_ENGINE` | `v2` en un proyecto, `v1` en el otro | Lo único que los diferencia |
-| `LEGACY_WORK_FACTOR` | `550` (solo V1) | Más alto = V1 más lenta. Ajustar hasta el tiempo deseado: en Vercel el CPU es distinto al de tu equipo |
+| `LEGACY_TARGET_SECONDS` | `25` (solo V1, es el valor por defecto) | Tiempo objetivo de V1. Se auto-calibra en cada compra, también en Vercel. Con `0` se usa `LEGACY_WORK_FACTOR` fijo |
 | `ADMIN_PASSWORD`, `SEED_DEMO_CUSTOMER` | como ya los tengas | Opcionales |
 
 > Cambiar una variable en Vercel **no afecta al despliegue ya publicado**: hay que volver a desplegar (*Deployments → ⋯ → Redeploy*).
@@ -69,7 +69,7 @@ vercel --prod
 
 ## Ojo con el límite de tiempo de Vercel
 
-V1 tarda 20-30 s. Si tu plan o tu configuración limita las funciones a menos tiempo (el límite por defecto depende del plan y de si tienes *Fluid Compute*), Vercel cortará la compra con un error 504 y **no se guardará el pedido**. Revisa el límite en *Settings → Functions → Max Duration* del proyecto V1. Si no puedes subirlo, baja `LEGACY_WORK_FACTOR` en V1 (por ejemplo a `200`) para que el recibo termine dentro del límite.
+V1 tarda unos 25 s (`LEGACY_TARGET_SECONDS`). Si tu plan o tu configuración limita las funciones a menos tiempo (el límite por defecto depende del plan y de si tienes *Fluid Compute*), Vercel cortará la compra con un error 504 y **no se guardará el pedido**. Revisa el límite en *Settings → Functions → Max Duration* del proyecto V1. Si no puedes subirlo, baja `LEGACY_TARGET_SECONDS` en V1 por debajo de ese límite (por ejemplo `8` si el límite es 10 s).
 
 ## Local
 
