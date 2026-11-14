@@ -48,6 +48,9 @@ class Settings:
     receipt_engine: str | None
     # How many redundant passes the legacy (v1) engine performs. Higher = slower.
     legacy_work_factor: int
+    # Target duration (seconds) for v1. v1 measures its own speed in each request and sizes its wasteful passes
+    # to land near this time, whatever the CPU or database latency. None (LEGACY_TARGET_SECONDS=0) = fixed factor.
+    legacy_target_seconds: float | None
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -64,6 +67,7 @@ class Settings:
             demo_customer_password=os.getenv("DEMO_CUSTOMER_PASSWORD", "cliente1234"),
             receipt_engine=(os.getenv("RECEIPT_ENGINE") or "").lower() or None,
             legacy_work_factor=int(os.getenv("LEGACY_WORK_FACTOR", "550")),
+            legacy_target_seconds=float(os.getenv("LEGACY_TARGET_SECONDS", "25")) or None,
         )
 
 
