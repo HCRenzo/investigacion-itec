@@ -1,2 +1,5 @@
-# PRUEBA: version antigua con CVE critico (CVE-2020-14343, PyYAML < 5.4). Borrar despues.
-PyYAML==5.3.1
+# PRUEBA: versiones antiguas con vulnerabilidades conocidas. Borrar despues.
+PyYAML==5.3.1        # 1 critica
+Django==2.2.0        # 6 criticas, 17 medias, 4 bajas (y mas altas)
+cryptography==3.2    # 4 bajas (y mas)
+Jinja2==2.10         # 5 medias (y 1 alta)
