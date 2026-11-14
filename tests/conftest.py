@@ -7,3 +7,4 @@ os.environ["DATABASE_URL"] = os.environ.get("TEST_DATABASE_URL") or f"sqlite:///
 os.environ["ADMIN_EMAIL"] = "admin@test.local"
 os.environ["ADMIN_PASSWORD"] = "admin-pass-1"
 os.environ["LEGACY_WORK_FACTOR"] = "1"  # keep the deliberately slow engine fast under test
+os.environ["LEGACY_TARGET_SECONDS"] = "0"  # fixed tiny factor in tests, no time-targeting

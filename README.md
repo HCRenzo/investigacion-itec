@@ -33,7 +33,7 @@ static/              Interfaz web (tienda en / y panel en /admin)
 El cliente no elige versión. Se elige desde el panel `/admin` → *Configuración* (V1, V2 o Automático) o con la variable `RECEIPT_ENGINE` (ver [docs/DESPLIEGUE_V1_V2.md](docs/DESPLIEGUE_V1_V2.md)). Prioridad: panel → variable de entorno → V2.
 
 - **v2** (por defecto): una sola consulta al catálogo y un recorrido lineal. Casi instantáneo.
-- **v1**: código heredado ineficiente a propósito, sin `sleep`. Relee el catálogo de la base de datos en cada búsqueda, escanea sin cortar, revalida y copia todo repetidamente y reconstruye el recibo varias veces. Con `LEGACY_WORK_FACTOR=550` un pedido de 3 líneas tarda ~30 s en esta máquina; el tiempo depende del hardware, ajustar el factor para calibrarlo.
+- **v1**: código heredado ineficiente a propósito, sin `sleep`. Relee el catálogo de la base de datos en cada búsqueda, escanea sin cortar, revalida y copia todo repetidamente y reconstruye el recibo varias veces. V1 se **calibra sola** para tardar cerca de `LEGACY_TARGET_SECONDS` (25 s por defecto): mide su propia velocidad en cada compra (CPU y latencia de la base) y dimensiona el trabajo inútil para llegar a ese tiempo.
 
 Documentación detallada, scripts para levantar ambas versiones y validación automática: [scripts/README.md](scripts/README.md). Para tener V1 y V2 a la vez en Vercel: [docs/DESPLIEGUE_V1_V2.md](docs/DESPLIEGUE_V1_V2.md).
 
@@ -65,7 +65,8 @@ Notas:
 | `SECRET_KEY` | Firma de sesiones (**cambiar en producción**) | clave de desarrollo |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Administrador inicial | `admin@tienda.local` / `admin1234` |
 | `RECEIPT_ENGINE` | Motor de recibo: `v1` (lento) o `v2` (rápido). Solo aplica si el panel está en *Automático* | `v2` |
-| `LEGACY_WORK_FACTOR` | Cuánto trabajo inútil hace v1 | `550` |
+| `LEGACY_TARGET_SECONDS` | Tiempo objetivo de v1 en segundos (auto-calibrado). `0` = usar factor fijo | `25` |
+| `LEGACY_WORK_FACTOR` | Cuánto trabajo inútil hace v1, **solo si** `LEGACY_TARGET_SECONDS=0` | `550` |
 
 ## Tecnologias
 
