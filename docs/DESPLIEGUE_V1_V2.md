@@ -71,6 +71,6 @@ vercel --prod
 
 V1 tarda unos 25 s (`LEGACY_TARGET_SECONDS`). Si tu plan o tu configuración limita las funciones a menos tiempo (el límite por defecto depende del plan y de si tienes *Fluid Compute*), Vercel cortará la compra con un error 504 y **no se guardará el pedido**. Revisa el límite en *Settings → Functions → Max Duration* del proyecto V1. Si no puedes subirlo, baja `LEGACY_TARGET_SECONDS` en V1 por debajo de ese límite (por ejemplo `8` si el límite es 10 s).
 
-## Local
+## Local (sin Vercel)
 
-- **Local**: `scripts/start_all.sh` levanta V2 (:8010) y V1 (:8011) con la base local (SQLite), sin tocar Supabase ni tu `.env`.
+Para probar en local: `scripts/start_all.sh` levanta V2 (:8010) y V1 (:8011) con la base local (SQLite), sin tocar Supabase ni tu `.env`.
