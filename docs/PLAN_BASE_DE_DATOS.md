@@ -1,6 +1,6 @@
-# Plan de base de datos (Supabase / PostgreSQL)
+# Esquema de base de datos (Supabase / PostgreSQL)
 
-Estado: **propuesta para aprobar. Todavía no se ha cambiado código.**
+Referencia del diseño implementado en [supabase/migrations/](../supabase/migrations/). Las decisiones tomadas: nombres en español, autenticación propia (`t_usuario` + JWT), borrado lógico, e inclusión de `t_movimiento_inventario` y `t_parametro`.
 
 ## 1. Convenciones
 
@@ -127,8 +127,8 @@ Lo llena un trigger genérico en las tablas de negocio; nadie lo edita a mano.
 
 Lleva también las columnas estándar por uniformidad, aunque `updated_*` y `deleted_*` no se usarán.
 
-### t_parametro (opcional)
-Configuración editable sin redesplegar: `TASA_IVA`, `MOTOR_RECIBO` (v1/v2). Columnas: `clave` (única), `valor`, `descripcion`. Permitiría cambiar el motor de recibo desde la base en vez de la variable de entorno. **Solo si lo quieres**; si no, se queda en `RECEIPT_ENGINE`.
+### t_parametro
+Configuración editable sin redesplegar: `TASA_IVA` y `MOTOR_RECIBO` (`v1`, `v2` o `auto`; en `auto` cada despliegue usa su variable `RECEIPT_ENGINE`). Columnas: `clave` (única), `valor`, `descripcion`.
 
 ## 3. Índices principales
 - Únicos parciales (solo filas vigentes): `lower(t_usuario.email)`, `t_producto.sku`, `t_categoria.nombre`, `t_pedido.numero`.
@@ -142,18 +142,5 @@ Supabase expone por defecto el esquema `public` por una API REST. Para que nadie
 - La cadena de conexión va en `DATABASE_URL` (variable de entorno, nunca en el repositorio).
 - En Vercel hay que usar el **pooler de Supabase (modo transacción, puerto 6543)**; con psycopg requiere desactivar los prepared statements (`prepare_threshold=None`).
 
-## 5. Cambios en el código (después de aprobar)
-1. **Migraciones**: `supabase/migrations/0001_esquema.sql` con tablas, índices, triggers y RLS. Reemplaza el `create_all` y el parche de columnas actual.
-2. **Modelos**: un `AuditedEntity` base (id, uuid, columnas de auditoría) del que heredan todas las entidades; tablas renombradas a `t_*`.
-3. **Repositorios/servicios**: filtro automático de borrados lógicos, `set_config('app.user_id')` por transacción, y registro de movimientos de inventario al comprar.
-4. **API y frontend**: los identificadores pasan de número a **uuid** (`product_id`, rutas de admin).
-5. **Seed**: roles, categorías, productos, administrador y cliente de prueba.
-6. **Pruebas**: se mantienen con SQLite para ser rápidas; se añade una corrida contra Postgres para probar triggers y restricciones.
-7. **Documentación**: README y `scripts/README.md`.
-
-## 6. Decisiones que necesito de ti
-1. **Nombres en español** (`t_usuario`, `t_pedido`...) ¿o prefieres inglés (`t_user`, `t_order`...)?
-2. **Autenticación**: mantener la actual (tabla `t_usuario` + JWT propio, es lo que recomiendo: menos cambios) o migrar a Supabase Auth.
-3. **Borrado lógico** (recomendado) o borrado real.
-4. ¿Incluyo `t_movimiento_inventario` y `t_parametro`, o dejamos solo las 7 tablas base?
-5. Interrumpiste el pedido de **"liberar el login para usarlo sin la BD"**. ¿Sigue vigente (por ejemplo, un modo demo si la base no responde) o lo reemplaza este cambio a Supabase?
+## 5. Pruebas
+La suite corre con SQLite para ser rápida. Para probar triggers y restricciones contra Postgres: `TEST_DATABASE_URL=postgresql://... python -m pytest -q`.

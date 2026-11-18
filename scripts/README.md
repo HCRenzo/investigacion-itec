@@ -9,7 +9,7 @@ La tienda genera el recibo con uno de dos **motores** intercambiables. El client
 | Clase | `LegacyReceiptEngine` | `FastReceiptEngine` |
 | Activación | `RECEIPT_ENGINE=v1` | `RECEIPT_ENGINE=v2` (por defecto) |
 | Puerto (scripts) | **8011** | **8010** |
-| Tiempo (pedido de 3 líneas) | ~30 s | ~0.001 s |
+| Tiempo (pedido de 3 líneas) | ~25 s (objetivo configurable) | ~0.001 s |
 | Complejidad | Crece con líneas × productos × `LEGACY_WORK_FACTOR` (cuadrática en líneas) | O(n) lineal |
 
 Ambos motores heredan de `ReceiptEngine` ([`base.py`](../api/services/receipt/base.py)), que suma subtotal, IVA (21 %) y total y mide el tiempo. Solo cambia **cómo se calculan las líneas**. Una fábrica ([`factory.py`](../api/services/receipt/factory.py)) elige el motor y [`checkout_service.py`](../api/services/checkout_service.py) lo usa al comprar.
@@ -24,7 +24,7 @@ No usa `sleep`: el tiempo viene de trabajo real innecesario. No copiar estos pat
 - Cada línea nueva revisa de nuevo todas las anteriores.
 - Reconstruye el recibo completo varias veces y exige que coincida.
 
-El tiempo depende del hardware y se calibra con `LEGACY_WORK_FACTOR` (por defecto `550` ≈ 30 s en la máquina de desarrollo). Mientras V1 trabaja consume CPU y puede ralentizar a otros usuarios del mismo proceso.
+V1 **se calibra sola**: en cada compra ejecuta una pasada pequeña, mide cuánto tarda en ese entorno (CPU y latencia de la base de datos) y dimensiona el trabajo para tardar cerca de `LEGACY_TARGET_SECONDS` (25 s por defecto). Así el tiempo es parecido en tu equipo y en Vercel. Con `LEGACY_TARGET_SECONDS=0` se usa un `LEGACY_WORK_FACTOR` fijo. Mientras V1 trabaja consume CPU y puede ralentizar a otros usuarios del mismo proceso.
 
 ### V2 (optimizada)
 - **Una** consulta al catálogo para todas las líneas (índice por clave).
@@ -73,7 +73,7 @@ Resultado de referencia (ejecución de ejemplo): V1 **30.03 s**, V2 **0.0010 s**
 
 ## Pruebas automáticas
 
-`python -m pytest -q` ejecuta pruebas de los motores con `LEGACY_WORK_FACTOR=1` (para que V1 sea rápida en las pruebas) y verifica que ambos dan el mismo resultado.
+`python -m pytest -q` ejecuta pruebas de los motores con `LEGACY_TARGET_SECONDS=0` y `LEGACY_WORK_FACTOR=1` (para que V1 sea rápida en las pruebas) y verifica que ambos dan el mismo resultado.
 
 ## Endpoints del experimento original
 

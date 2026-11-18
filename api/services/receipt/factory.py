@@ -16,7 +16,7 @@ class ReceiptEngineFactory:
         name = (name or self.settings.receipt_engine or "v2").lower()
         tax_rate = self.settings.tax_rate if tax_rate is None else tax_rate
         if name == "v1":
-            return LegacyReceiptEngine(tax_rate, self.settings.legacy_work_factor)
+            return LegacyReceiptEngine(tax_rate, self.settings.legacy_work_factor, self.settings.legacy_target_seconds)
         if name == "v2":
             return FastReceiptEngine(tax_rate)
         raise ValueError(f"Motor de recibo desconocido: {name!r} (use 'v1' o 'v2')")

@@ -1,6 +1,3 @@
--- Esquema de la tienda (Supabase / PostgreSQL). Ver docs/PLAN_BASE_DE_DATOS.md
--- Ejecutar una sola vez. Idempotente salvo los datos de t_rol (usa ON CONFLICT).
-
 -- =====================================================================
 -- 1. Tablas. Columnas estandar en todas: id, uuid y auditoria.
 --    Las FK de created_by/updated_by/deleted_by se agregan al final

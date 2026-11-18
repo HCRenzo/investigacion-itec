@@ -6,11 +6,14 @@ Do NOT copy these patterns. Every step below is wasteful on purpose:
   * everything is re-validated, re-converted through strings/floats and deep-copied,
   * each new line re-checks all previous lines (quadratic growth),
   * the whole receipt is rebuilt several times from scratch.
-The amount of waste is controlled by `work_factor` (Settings.legacy_work_factor).
+The amount of waste is controlled by `work_factor` (Settings.legacy_work_factor), or sized automatically to take
+about `target_seconds` (Settings.legacy_target_seconds): the engine times one small pass on the real catalog and
+scales the factor from it, so the duration stays near the target on any CPU or database latency.
 """
 import copy
 import json
 from collections.abc import Sequence
+from time import perf_counter
 from decimal import Decimal
 
 from api.errors import ProductNotFoundError
@@ -22,29 +25,45 @@ from api.services.receipt.types import CatalogEntry, OrderLine, ReceiptItem
 class LegacyReceiptEngine(ReceiptEngine):
     name = "v1"
 
-    def __init__(self, tax_rate: Decimal, work_factor: int):
+    MAX_FACTOR = 100_000
+
+    def __init__(self, tax_rate: Decimal, work_factor: int, target_seconds: float | None = None):
         super().__init__(tax_rate)
         self.work_factor = max(1, work_factor)
+        self.target_seconds = target_seconds
+        self.last_factor = self.work_factor  # factor actually used by the latest calculation
 
     # ---- orchestration -------------------------------------------------
     def _price_lines(self, lines: Sequence[OrderLine], catalog: ProductCatalog) -> list[ReceiptItem]:
-        self._audit_catalog(catalog)
+        factor = self._calibrated_factor(lines, catalog) if self.target_seconds else self.work_factor
+        self.last_factor = factor
+        return self._run(lines, catalog, factor)
+
+    def _calibrated_factor(self, lines: Sequence[OrderLine], catalog: ProductCatalog) -> int:
+        """Run the whole wasteful procedure once with factor 1 and scale: the cost is linear in the factor."""
+        started = perf_counter()
+        self._run(lines, catalog, 1)
+        one_pass = max(perf_counter() - started, 1e-6)
+        return int(min(max(round(self.target_seconds / one_pass), 1), self.MAX_FACTOR))
+
+    def _run(self, lines: Sequence[OrderLine], catalog: ProductCatalog, factor: int) -> list[ReceiptItem]:
+        self._audit_catalog(catalog, factor)
         priced: list[ReceiptItem] = []
         for line in lines:
             entry = None
-            for _ in range(self.work_factor):
+            for _ in range(factor):
                 self._validate_line(line)
                 entry = self._find_by_scanning(line.key, catalog)
                 self._recheck_all(priced)
             if entry is None:
                 raise ProductNotFoundError(line.key)
             priced.append(self._make_item(line, entry))
-        return self._rebuild_from_scratch(lines, priced, catalog)
+        return self._rebuild_from_scratch(lines, priced, catalog, factor)
 
     # ---- the wasteful parts --------------------------------------------
-    def _audit_catalog(self, catalog: ProductCatalog) -> None:
+    def _audit_catalog(self, catalog: ProductCatalog, factor: int) -> None:
         """'Integrity check' that re-reads and re-validates the whole catalog many times."""
-        for _ in range(self.work_factor * 25):
+        for _ in range(factor * 25):
             snapshot = copy.deepcopy(catalog.all())
             for entry in sorted(snapshot, key=lambda e: str(e.name).lower()):
                 for other in snapshot:  # duplicate check, compares every pair
@@ -85,10 +104,10 @@ class LegacyReceiptEngine(ReceiptEngine):
     def _make_item(line: OrderLine, entry: CatalogEntry) -> ReceiptItem:
         return ReceiptItem(line.key, entry.name, line.quantity, entry.price, entry.price * line.quantity)
 
-    def _rebuild_from_scratch(self, lines, first_pass, catalog) -> list[ReceiptItem]:
+    def _rebuild_from_scratch(self, lines, first_pass, catalog, factor: int) -> list[ReceiptItem]:
         """Recompute the whole receipt several times and insist the results agree."""
         result = first_pass
-        for _ in range(self.work_factor):
+        for _ in range(factor):
             rebuilt = []
             for line in lines:
                 entry = self._find_by_scanning(line.key, catalog)
