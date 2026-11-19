@@ -40,6 +40,7 @@ Requieren el entorno virtual (`.venv`) con las dependencias instaladas.
 | `scripts/start_v1.sh` / `scripts/start_v2.sh` | Levanta solo una versión |
 | `scripts/stop_all.sh` | Detiene las dos |
 | `scripts/validate.py` | Valida que V1 y V2 coinciden y que V2 es más rápida |
+| `scripts/run_experiment.py` | Campaña experimental completa (tamaños, repeticiones, calentamiento) y exporta los datos crudos en CSV/JSON a `scripts/.run/experimento/` |
 
 Cambiar puertos: `V1_PORT=9001 V2_PORT=9000 scripts/start_all.sh`. Los registros quedan en `scripts/.run/v1.log` y `v2.log`.
 

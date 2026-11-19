@@ -13,7 +13,11 @@ from api.services.catalog_service import CatalogService
 from api.services.checkout_service import CheckoutService
 from api.services.config_service import ConfigService
 from api.services.receipt import ReceiptEngineFactory
+from api.services.experiment_service import ExperimentService
+from api.services.performance_service import PerformanceService
+from api.services.quality_service import QualityService
 from api.services.report_service import ReportService
+from api.services.statistics_service import StatisticsService
 from api.services.security import PasswordHasher, TokenService
 from api.services.seed_service import SeedService
 
@@ -54,3 +58,19 @@ class Services:
     def seed(self) -> SeedService:
         return SeedService(self.products, self.categories, self.roles, self.params, self.movements, self.auth,
                            settings)
+
+    @cached_property
+    def experiments(self) -> ExperimentService:
+        return ExperimentService(settings)
+
+    @cached_property
+    def performance(self) -> PerformanceService:
+        return PerformanceService(self.orders, settings)
+
+    @cached_property
+    def quality(self) -> QualityService:
+        return QualityService(settings)
+
+    @cached_property
+    def statistics(self) -> StatisticsService:
+        return StatisticsService(self.orders)
