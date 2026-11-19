@@ -16,6 +16,7 @@ Cada pedido guarda el motor usado y su tiempo, y el panel de administración los
 - [Pruebas](#pruebas)
 - [Variables de entorno](#variables-de-entorno)
 - [Motores V1 y V2](#motores-v1-y-v2)
+- [Módulos de investigación](#módulos-de-investigación)
 - [Base de datos](#base-de-datos)
 - [Desplegar en Vercel](#desplegar-en-vercel)
 - [Arquitectura](#arquitectura)
@@ -26,6 +27,9 @@ Cada pedido guarda el motor usado y su tiempo, y el panel de administración los
 - **Tienda** (`/`): registro e inicio de sesión (JWT, contraseñas con scrypt), catálogo con búsqueda y categorías, carrito y compra. El stock se descuenta de forma atómica: dos compradores no pueden llevarse la última unidad.
 - **Mis pedidos:** historial de compras del usuario.
 - **Panel de administración** (`/admin`): login propio y separado (las sesiones no se comparten y las cuentas admin no entran por la tienda). Incluye resumen de ventas, listado de ventas, inventario (alta y edición de productos) y configuración del motor.
+- **Experimentos** (`/admin#/experimentos`): diseño de pruebas experimentales V1 vs V2. Ver [Módulos de investigación](#módulos-de-investigación).
+- **Estadística** (`/admin#/estadistica`): pruebas de hipótesis sobre los pedidos reales o el último experimento.
+- **Rendimiento y calidad** (`/admin#/rendimiento`): latencia real, benchmark de escalado y evaluación ISO/IEC 25010.
 - **API del experimento:** `POST /api/sales` (V2) y `POST /api/sales/slow` (V1) calculan una venta con catálogo en memoria, sin login, para medir los motores aislados.
 
 Stack: Python 3.12, FastAPI, SQLAlchemy, PyJWT, frontend en HTML/CSS/JS, pytest, Vercel.
@@ -74,6 +78,29 @@ Plantilla en [.env.example](.env.example). El archivo `.env` no se sube a git.
 El cliente no ve ni elige el motor. Prioridad de selección: **panel `/admin` → Configuración (V1/V2) → variable `RECEIPT_ENGINE` → V2**. Con el panel en *Automático* manda la variable, lo que permite tener dos despliegues con motores distintos sobre la misma base.
 
 Código: [legacy.py](api/services/receipt/legacy.py) (V1), [fast.py](api/services/receipt/fast.py) (V2). Detalles, scripts y validación automática en [scripts/README.md](scripts/README.md).
+
+## Módulos de investigación
+
+Pensados para obtener los datos de la sección de resultados del artículo. Todo se puede descargar en CSV/JSON.
+
+**Experimentos** — experimento controlado, en memoria (no crea pedidos ni toca el stock):
+- Diseño factorial 2 (motor) × k (líneas por pedido), corridas en orden aleatorio con semilla, mismo pedido para ambos motores, calentamiento descartado y reportado.
+- Por condición: mediana, p95, p99, media, desviación, IC, tiempo de CPU y pico de memoria, y si cumple el umbral (p95 ≤ 20 s por defecto).
+- Por tamaño: Mann-Whitney U, diferencia de medianas en segundos y %, IC 95 % por remuestreo (bootstrap), tamaño del efecto (rank-biserial), aceleración y comprobación de que ambos motores dan el mismo total. Complementarios: Welch y ANOVA factorial.
+- Declara el entorno (sistema, núcleos, Python, commit, base) y exporta corridas crudas, calentamiento, condiciones y comparaciones.
+- Para la campaña completa (30 corridas × 10/100/500/1500 líneas) usa la terminal, sin límite de tiempo de petición: `.venv/bin/python scripts/run_experiment.py`. En Vercel el experimento se limita a ~45 s estimados (`EXPERIMENT_MAX_SECONDS`).
+- Limitación: V1 se ejecuta con intensidad fija (no auto-calibrada) y sobre un catálogo sintético en memoria (200 productos por defecto), no sobre 200 000 productos de la base real.
+
+**Estadística** — contrastes sobre los pedidos reales de la tienda o las corridas del último experimento:
+1. Supuestos: normalidad (Jarque-Bera) y homogeneidad de varianzas (Levene/Brown-Forsythe).
+2. Comparación V1 vs V2: Mann-Whitney, Welch, ANOVA y Kruskal-Wallis, con la prueba recomendada según los supuestos, tamaño del efecto e IC bootstrap de la diferencia de medianas.
+3. Tamaño del pedido vs tiempo: Spearman, Pearson y regresión lineal.
+4. Umbral de aceptación: t de una muestra unilateral, p95 y proporción dentro del umbral con IC de Wilson.
+Cada prueba incluye su decisión en lenguaje claro y se exporta en CSV/JSON.
+
+**Rendimiento y calidad**:
+- *Rendimiento*: distribución (mediana, p90, p95, p99) de los recibos reales ya emitidos, con CSV de datos crudos; y un benchmark de escalado con recibos/s y exponente de complejidad empírica (pendiente log-log).
+- *Calidad*: equivalencia funcional V1/V2 en pedidos aleatorios, métricas de mantenibilidad (complejidad ciclomática, anidamiento), inventario de pruebas y CI, y una tabla ISO/IEC 25010 que indica qué se midió, qué parcialmente y qué no.
 
 ## Base de datos
 
