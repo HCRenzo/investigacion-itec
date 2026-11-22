@@ -21,7 +21,7 @@ function renderNav() {
   if (!user) return;
   const route = (location.hash.split("/")[1] || "resumen").split("?")[0];
   const link = (r, label) => `<a href="#/${r}" class="${route === r ? "active" : ""}">${label}</a>`;
-  $("#nav").innerHTML = link("resumen", "Resumen") + link("ventas", "Ventas") + link("inventario", "Inventario") + link("experimentos", "Experimentos") + link("estadistica", "Estadística") + link("rendimiento", "Rendimiento y calidad") + link("config", "Configuración");
+  $("#nav").innerHTML = link("resumen", "Resumen") + link("ventas", "Ventas") + link("inventario", "Inventario") + link("experimentos", "Experimentos") + link("estadistica", "Estadística") + link("reportes", "Reportes") + link("rendimiento", "Rendimiento y calidad") + link("config", "Configuración");
   const engine = engineInfo ? `<span class="pill ${engineInfo.receipt_engine === "v1" ? "off" : ""}" title="${esc(engineInfo.source)}">Motor ${esc(engineInfo.receipt_engine.toUpperCase())}</span>` : "";
   $("#userbox").innerHTML = `${engine}<span id="user-name" class="muted">${esc(user.name)}</span><button class="btn" id="logout">Salir</button>`;
   $("#logout").onclick = logout;
@@ -160,6 +160,7 @@ async function render() {
     if (route === "ventas") await viewSales();
     else if (route === "inventario") await viewInventory();
     else if (route === "experimentos") await viewExperiments();
+    else if (route === "reportes") await viewReports();
     else if (route === "estadistica") await viewStatistics();
     else if (route === "rendimiento") await viewPerformance();
     else if (route === "config") await viewConfig();
