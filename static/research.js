@@ -27,7 +27,9 @@ function field(label, name, value, attrs = "", hint = "") {
 }
 
 // ---------------------------------------------------------------- Experimentos
-let lastExperiment = null;
+const SAVED_KEY = "last_experiment";
+let lastExperiment = (() => { try { return JSON.parse(localStorage.getItem(SAVED_KEY)); } catch { return null; } })();
+function saveExperiment() { try { localStorage.setItem(SAVED_KEY, JSON.stringify(lastExperiment)); } catch {} } // lets /reportes reuse it after a reload
 
 async function viewExperiments() {
   $("#app").innerHTML = `<div class="page-head"><div><h1>Diseño de pruebas experimentales</h1>
@@ -54,7 +56,7 @@ async function viewExperiments() {
     const body = { sizes: f.sizes.split(/[,\s]+/).filter(Boolean).map(Number), replicates: +f.replicates, warmup: +f.warmup, work_factor: +f.work_factor,
       catalog_size: +f.catalog_size, seed: +f.seed, alpha: +f.alpha, threshold: +f.threshold, bootstrap_reps: +f.bootstrap_reps };
     const btn = $("#xf-run"); btn.disabled = true; $("#xf-error").textContent = ""; $("#xf-status").textContent = "Ejecutando… puede tardar según los tamaños elegidos.";
-    try { lastExperiment = await api("/admin/experiments/run", { method: "POST", body }); drawExperiment(lastExperiment); $("#xf-status").textContent = "Listo."; }
+    try { lastExperiment = await api("/admin/experiments/run", { method: "POST", body }); saveExperiment(); drawExperiment(lastExperiment); $("#xf-status").textContent = "Listo."; }
     catch (err) { $("#xf-error").textContent = err.message; $("#xf-status").textContent = ""; }
     btn.disabled = false;
   };

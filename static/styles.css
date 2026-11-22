@@ -142,3 +142,13 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .tabs a { padding: 9px 16px; font-weight: 600; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
 .tabs a.on { color: var(--brand); border-bottom-color: var(--brand); }
 .card .table-wrap { margin: 10px 0; overflow-x: auto; }
+
+.charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 520px), 1fr)); gap: 16px; margin-top: 12px; }
+.chart-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.chart-head p { margin: 2px 0 0; font-size: 13px; }
+.chart-actions { display: flex; gap: 6px; align-items: start; }
+.chart-actions .btn { padding: 6px 10px; font-size: 13px; }
+.chart-plot svg { width: 100%; height: auto; display: block; border-radius: 10px; }
+.chart-table { margin-top: 10px; max-height: 280px; overflow: auto; }
+.viz-tip { position: fixed; z-index: 70; pointer-events: none; display: grid; gap: 2px; padding: 8px 11px; border-radius: 9px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); font-size: 12px; }
+.viz-tip strong { font-size: 15px; } .viz-tip span { color: var(--muted); }

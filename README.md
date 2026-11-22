@@ -29,6 +29,7 @@ Cada pedido guarda el motor usado y su tiempo, y el panel de administración los
 - **Panel de administración** (`/admin`): login propio y separado (las sesiones no se comparten y las cuentas admin no entran por la tienda). Incluye resumen de ventas, listado de ventas, inventario (alta y edición de productos) y configuración del motor.
 - **Experimentos** (`/admin#/experimentos`): diseño de pruebas experimentales V1 vs V2. Ver [Módulos de investigación](#módulos-de-investigación).
 - **Estadística** (`/admin#/estadistica`): pruebas de hipótesis sobre los pedidos reales o el último experimento.
+- **Reportes** (`/admin#/reportes`): gráficos V1 vs V2 (mediana, p95 vs umbral, aceleración, corridas, percentiles reales) con descarga en SVG/PNG.
 - **Rendimiento y calidad** (`/admin#/rendimiento`): latencia real, benchmark de escalado y evaluación ISO/IEC 25010.
 - **API del experimento:** `POST /api/sales` (V2) y `POST /api/sales/slow` (V1) calculan una venta con catálogo en memoria, sin login, para medir los motores aislados.
 
@@ -90,6 +91,8 @@ Pensados para obtener los datos de la sección de resultados del artículo. Todo
 - Declara el entorno (sistema, núcleos, Python, commit, base) y exporta corridas crudas, calentamiento, condiciones y comparaciones.
 - Para la campaña completa (30 corridas × 10/100/500/1500 líneas) usa la terminal, sin límite de tiempo de petición: `.venv/bin/python scripts/run_experiment.py`. En Vercel el experimento se limita a ~45 s estimados (`EXPERIMENT_MAX_SECONDS`).
 - Limitación: V1 se ejecuta con intensidad fija (no auto-calibrada) y sobre un catálogo sintético en memoria (200 productos por defecto), no sobre 200 000 productos de la base real.
+
+**Reportes** — gráficos SVG propios (sin librerías), con paleta validada para daltonismo en tema claro y oscuro, tooltip al pasar el cursor y vista de tabla. Fuente: el último experimento (se conserva en el navegador) o los pedidos reales. Cada gráfico se descarga en SVG o PNG (tema claro, para el documento). Las series de V1 y V2 difieren en órdenes de magnitud, por eso los ejes de tiempo son logarítmicos y así se indica en el eje.
 
 **Estadística** — contrastes sobre los pedidos reales de la tienda o las corridas del último experimento:
 1. Supuestos: normalidad (Jarque-Bera) y homogeneidad de varianzas (Levene/Brown-Forsythe).
