@@ -84,3 +84,9 @@ def analyze_statistics(body: StatisticsIn, services: Services = Depends(get_serv
     rows = services.statistics.order_rows() if body.source == "orders" else [r.model_dump() for r in body.samples]
     label = "Pedidos reales de la tienda" if body.source == "orders" else "Corridas del experimento"
     return services.statistics.analyze(rows, alpha=body.alpha, threshold=body.threshold, source=label)
+
+
+@router.get("/reports/dataset")
+def report_dataset(services: Services = Depends(get_services)):
+    """Aggregated data behind the 'Base de datos' charts of the Reportes module."""
+    return services.reports.dataset()

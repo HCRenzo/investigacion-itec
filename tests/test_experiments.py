@@ -90,3 +90,13 @@ def test_statistics_module_on_samples_and_orders(admin):
     assert d["threshold_tests"][0]["meets_p95"]
     empty = client.post("/api/admin/statistics/analyze", headers=h, json={"source": "samples", "samples": []})
     assert empty.status_code == 422
+
+
+def test_report_dataset_aggregates_real_tables(admin):
+    client, h = admin
+    d = client.get("/api/admin/reports/dataset", headers=h)
+    assert d.status_code == 200, d.text
+    data = d.json()
+    assert {"orders", "by_product", "stock", "movements", "database"} <= data.keys()
+    assert data["stock"] and {"product", "category", "stock"} <= data["stock"][0].keys()
+    assert TestClient(app).get("/api/admin/reports/dataset").status_code == 401
